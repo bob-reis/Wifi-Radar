@@ -66,18 +66,21 @@ async function loadInterfaces() {
     const d = await r.json();
     const sel = $("interface");
     sel.innerHTML = "";
-    if (!d.interfaces.length) {
-      sel.innerHTML = "<option value=''>nenhuma interface wireless</option>";
+    // Só lista adaptadores que suportam monitor mode (os demais não servem
+    // para o scan e, se forem o uplink do host, ainda derrubariam o SSH).
+    const usable = d.interfaces.filter((i) => i.monitor_capable);
+    if (!usable.length) {
+      sel.innerHTML =
+        "<option value=''>nenhum adaptador com monitor mode — conecte um USB compatível</option>";
     }
-    for (const i of d.interfaces) {
-      const cap = i.monitor_capable ? "" : " ⚠ sem monitor";
+    for (const i of usable) {
       const up = i.uplink ? " ⛔ uplink do host" : "";
       const opt = document.createElement("option");
       opt.value = i.iface;
-      opt.textContent = `${i.iface} (${i.mode || "?"})${cap}${up}`;
-      // Bloqueia escolher a interface que provê a rede do host (derrubaria SSH)
+      opt.textContent = `${i.iface} (${i.mode || "?"})${up}`;
+      // Mesmo suportando monitor, bloqueia se for a interface de uplink
       if (i.uplink) opt.disabled = true;
-      opt.selected = !i.uplink && i.monitor_capable;
+      opt.selected = !i.uplink;
       sel.appendChild(opt);
     }
     if (d.regulatory && d.regulatory !== "?") $("country").value = d.regulatory;

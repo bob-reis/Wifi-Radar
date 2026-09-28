@@ -18,14 +18,28 @@ log "Parando scanner (container wifi-radar) e airodump remanescente..."
 docker stop wifi-radar 2>/dev/null
 pkill -9 airodump-ng 2>/dev/null
 
+log "Parando NetworkManager (libera o driver p/ recarregar)..."
+systemctl stop NetworkManager 2>/dev/null
+
+log "Apagando estado salvo do rfkill (senão o bloqueio volta no boot)..."
+rm -f /var/lib/systemd/rfkill/* 2>/dev/null
+
 log "Limpando rfkill (soft + hard block)..."
 rfkill unblock all 2>/dev/null
 rfkill unblock wifi 2>/dev/null
 
 log "Recarregando driver Broadcom (wl)... (destrava hard block travado)"
 modprobe -r wl 2>/dev/null
+if lsmod | grep -q '^wl'; then
+  log "  wl ainda carregado; forçando rmmod..."
+  rmmod -f wl 2>/dev/null
+fi
 sleep 1
 modprobe wl 2>/dev/null
+sleep 1
+
+log "Reiniciando NetworkManager..."
+systemctl start NetworkManager 2>/dev/null
 sleep 1
 
 log "Devolvendo interfaces a managed + NetworkManager..."
