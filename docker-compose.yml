@@ -12,6 +12,10 @@ services:
     image: hackersarise/wifi-radar:latest
     container_name: wifi-radar
     network_mode: host
+    # pid: host permite que o `airmon-ng check kill` (dentro do container)
+    # encerre NetworkManager/wpa_supplicant do HOST, que senão ficam trocando
+    # o canal da interface e quebrando o monitor mode.
+    pid: host
     privileged: true
     cap_add:
       - NET_ADMIN

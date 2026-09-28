@@ -67,36 +67,58 @@ def monitor_capable(iface: str) -> bool:
     return "monitor" in block.group(1).lower()
 
 
-def enable_monitor(iface: str) -> tuple[bool, str]:
-    """Ativa monitor mode. Tenta airmon-ng (mata processos concorrentes e
-    renomeia), com fallback para iw manual. Retorna (ok, nome_interface_monitor)."""
-    before = set(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else set()
+def enable_monitor(iface: str, kill_all: bool = False) -> tuple[bool, str]:
+    """Ativa monitor mode SÓ na interface indicada, de forma cirúrgica.
 
-    _run(["airmon-ng", "check", "kill"])
-    ok, out = _run(["airmon-ng", "start", iface])
-    if ok:
-        after = set(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else set()
-        new = list(after - before)
-        if new:
-            return True, new[0]
-        if interface_info(iface).get("mode") == "monitor":
-            return True, iface
+    Importante: NÃO usa `airmon-ng check kill` por padrão, pois ele encerra o
+    NetworkManager/wpa_supplicant globalmente — o que derruba a conectividade
+    do host (inclusive a interface usada por SSH). Em vez disso:
+      1. pede ao NetworkManager para NÃO gerenciar esta interface (nmcli);
+      2. mata apenas o wpa_supplicant amarrado a ela, se houver;
+      3. coloca a interface em monitor mode via `iw` (sem renomear);
+      4. fallback para `airmon-ng start <iface>` (sem check kill).
 
-    # Fallback manual via iw
+    kill_all=True restaura o comportamento agressivo (mata NM global) — use
+    só quando o host não depende de WiFi para rede.
+    Retorna (ok, nome_da_interface_monitor).
+    """
+    if kill_all:
+        _run(["airmon-ng", "check", "kill"])
+    else:
+        # Tira apenas esta interface do controle do NetworkManager
+        _run(["nmcli", "device", "set", iface, "managed", "no"])
+        _run(["pkill", "-f", f"wpa_supplicant.*{iface}"])
+
+    # Caminho principal: iw manual, mantém o nome da interface
     _run(["ip", "link", "set", iface, "down"])
     ok1, out1 = _run(["iw", "dev", iface, "set", "monitor", "control"])
+    if not ok1:
+        _run(["iw", "dev", iface, "set", "type", "monitor"])
     _run(["ip", "link", "set", iface, "up"])
+    if interface_info(iface).get("mode") == "monitor":
+        return True, iface
+
+    # Fallback: airmon-ng start (cria <iface>mon; ainda sem matar NM global)
+    before = set(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else set()
+    ok, out = _run(["airmon-ng", "start", iface])
+    after = set(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else set()
+    new = list(after - before)
+    if new:
+        _run(["nmcli", "device", "set", new[0], "managed", "no"])
+        return True, new[0]
     if interface_info(iface).get("mode") == "monitor":
         return True, iface
     return False, out1 or out or "não foi possível ativar monitor mode"
 
 
 def disable_monitor(iface: str) -> tuple[bool, str]:
-    ok, out = _run(["airmon-ng", "stop", iface])
-    if not ok:
-        _run(["ip", "link", "set", iface, "down"])
-        _run(["iw", "dev", iface, "set", "type", "managed"])
-        _run(["ip", "link", "set", iface, "up"])
+    # Volta para managed via iw (não usa airmon-ng stop para não mexer no host)
+    _run(["ip", "link", "set", iface, "down"])
+    ok, out = _run(["iw", "dev", iface, "set", "type", "managed"])
+    _run(["ip", "link", "set", iface, "up"])
+    # Devolve a interface (e um eventual <iface>mon) ao NetworkManager
+    base = iface[:-3] if iface.endswith("mon") else iface
+    _run(["nmcli", "device", "set", base, "managed", "yes"])
     return ok, out
 
 

@@ -41,9 +41,16 @@ docker compose up --build
 
 Abra **http://localhost:8000**.
 
-O container roda com `network_mode: host` + `privileged` porque o driver WiFi
-vive no kernel do host — é o que permite monitor mode de dentro do container.
-Perfis de calibração ficam em `./data`.
+O container roda com `network_mode: host` + `privileged` + `pid: host` porque o
+driver WiFi vive no kernel do host — é o que permite monitor mode de dentro do
+container. Perfis de calibração ficam em `./data`.
+
+**Segurança de conectividade:** o tool ativa monitor mode de forma *cirúrgica* —
+tira apenas a interface escolhida do NetworkManager (`nmcli device set <if>
+managed no`) e usa `iw`, **sem** `airmon-ng check kill`. Assim, se o host estiver
+conectado por outra interface WiFi (ex.: `wlan0` gerenciada pelo NetworkManager),
+essa conexão **não** cai. Escaneie sempre por um adaptador **diferente** do que
+provê a rede do host.
 
 ## 🐍 Rodando sem Docker (dev / teste rápido)
 
