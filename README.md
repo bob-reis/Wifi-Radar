@@ -31,6 +31,26 @@ Se `monitor` não aparecer, use um **adaptador USB compatível** (Alfa AWUS036 c
 chipset Atheros/Ralink/Realtek, etc.). Sem adaptador compatível, use o **modo
 simulação** para explorar a interface.
 
+### Validado em hardware real ✔
+
+O scan real foi validado num notebook (Kali) com adaptador USB **Ralink RT3070
+(`rt2800usb`)**: captura de APs ao vivo, filtragem Kalman, estimativa de
+distância e o Focus/Stop funcionando — tudo com a interface de uplink do host
+protegida (o SSH não caiu ao escanear por outro adaptador).
+
+**Notas de campo sobre adaptadores:**
+- **Nunca escaneie pela interface que dá internet ao host** — o app já esconde da
+  lista as interfaces sem monitor e bloqueia a de uplink, mas fica o aviso.
+- **Evite hubs USB sem fonte** — adaptadores como a RT3070 puxam corrente e, atrás
+  de hub passivo, dão `error -71`/`hard block`/até kernel panic. Prefira **porta
+  USB direta** ou **hub com fonte própria**.
+- A **RT3070** funciona mas pode ser **intermitente** (desconecta sozinha após
+  alguns minutos, é 2.4 GHz-only). Para uso sério, adaptadores mais estáveis:
+  **Atheros AR9271** (`ath9k_htc`), **MT7601U**, **RTL8812AU** (dual-band).
+- Em notebooks Apple/Broadcom (`wl`): a WiFi **interna não faz monitor mode** e
+  ainda costuma carregar o SSH — use sempre um adaptador USB separado.
+- Recuperação de emergência do WiFi do host: `sudo bash scripts/fix-wifi.sh`.
+
 ---
 
 ## 🚀 Rodando com Docker (recomendado)
