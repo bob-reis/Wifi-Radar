@@ -86,6 +86,12 @@ class ScanManager:
             iface = cfg.get("interface")
             if not iface:
                 raise RuntimeError("Nenhuma interface selecionada.")
+            if not cfg.get("force") and iface in ifacemod.uplink_interfaces():
+                raise RuntimeError(
+                    f"A interface '{iface}' provê a conectividade do host "
+                    f"(rota default). Colocá-la em monitor mode derrubaria a "
+                    f"rede e o SSH. Use um adaptador USB dedicado."
+                )
             ok, mon = ifacemod.enable_monitor(iface)
             if not ok:
                 raise RuntimeError(
@@ -129,11 +135,14 @@ async def index():
 
 @app.get("/api/interfaces")
 async def interfaces():
-    ifs = [ifacemod.interface_info(i) for i in ifacemod.list_wifi_interfaces()]
+    uplinks = ifacemod.uplink_interfaces()
+    ifs = [ifacemod.interface_info(i, uplinks)
+           for i in ifacemod.list_wifi_interfaces()]
     return {
         "interfaces": ifs,
         "environments": list(ENV_N.keys()),
         "regulatory": ifacemod.get_regulatory(),
+        "uplinks": sorted(uplinks),
     }
 
 
@@ -146,6 +155,7 @@ class StartCfg(BaseModel):
     txpower: float | None = None
     bssid: str | None = None
     channel: int | None = None
+    force: bool = False  # permite escanear pela interface de uplink (perigoso)
 
 
 @app.post("/api/scan/start")
@@ -159,7 +169,16 @@ async def scan_start(cfg: StartCfg):
 
 @app.post("/api/scan/stop")
 async def scan_stop():
+    # Apenas encerra o scanner (mata o airodump-ng). NÃO mexe na interface:
+    # não tira do monitor mode nem devolve ao NetworkManager — isso fica a
+    # cargo do usuário / de uma ação explícita.
     await mgr.stop()
+    state.reset()  # limpa os APs para o radar parar visivelmente na hora
+    await mgr.broadcast({
+        "type": "scan",
+        "data": {**state.snapshot(), "running": False, "mode": None,
+                 "monitor": None},
+    })
     return {"ok": True, "running": False}
 
 

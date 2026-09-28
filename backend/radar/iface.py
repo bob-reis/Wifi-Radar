@@ -35,14 +35,36 @@ def list_wifi_interfaces() -> list[str]:
     return sorted(ifaces)
 
 
-def interface_info(iface: str) -> dict:
+def uplink_interfaces() -> set[str]:
+    """Interfaces que carregam a rota default do host (conectividade/SSH).
+
+    Colocar uma delas em monitor mode derruba a rede do host — o tool bloqueia
+    isso. Retorna o conjunto de nomes de interface das rotas default (v4 e v6)."""
+    ifs = set()
+    for args in (["ip", "route", "show", "default"],
+                 ["ip", "-6", "route", "show", "default"]):
+        ok, out = _run(args)
+        if ok:
+            for m in re.finditer(r"dev (\S+)", out):
+                ifs.add(m.group(1))
+    return ifs
+
+
+def interface_info(iface: str, uplinks: set[str] | None = None) -> dict:
     ok, out = _run(["iw", "dev", iface, "info"])
     mode = None
     if ok:
         m = re.search(r"type (\w+)", out)
         if m:
             mode = m.group(1)
-    return {"iface": iface, "mode": mode, "monitor_capable": monitor_capable(iface)}
+    if uplinks is None:
+        uplinks = uplink_interfaces()
+    return {
+        "iface": iface,
+        "mode": mode,
+        "monitor_capable": monitor_capable(iface),
+        "uplink": iface in uplinks,
+    }
 
 
 def _phy_for(iface: str) -> str | None:

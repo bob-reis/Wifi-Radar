@@ -71,9 +71,13 @@ async function loadInterfaces() {
     }
     for (const i of d.interfaces) {
       const cap = i.monitor_capable ? "" : " ⚠ sem monitor";
+      const up = i.uplink ? " ⛔ uplink do host" : "";
       const opt = document.createElement("option");
       opt.value = i.iface;
-      opt.textContent = `${i.iface} (${i.mode || "?"})${cap}`;
+      opt.textContent = `${i.iface} (${i.mode || "?"})${cap}${up}`;
+      // Bloqueia escolher a interface que provê a rede do host (derrubaria SSH)
+      if (i.uplink) opt.disabled = true;
+      opt.selected = !i.uplink && i.monitor_capable;
       sel.appendChild(opt);
     }
     if (d.regulatory && d.regulatory !== "?") $("country").value = d.regulatory;
