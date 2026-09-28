@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hackers-Arise Wi-Fi Radar</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>◉ Wi-Fi <span>Radar</span></h1>
+    <div id="status" class="status">
+      <span id="status-dot" class="dot off"></span>
+      <span id="status-text">parado</span>
+      <span id="status-mode" class="badge"></span>
+      <span id="status-mon" class="badge mono"></span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <section>
+        <h2>Scan</h2>
+        <label>Modo
+          <select id="mode">
+            <option value="real">Real (airodump-ng)</option>
+            <option value="sim">Simulação (sem hardware)</option>
+          </select>
+        </label>
+        <label id="iface-row">Interface
+          <select id="interface"></select>
+        </label>
+        <label>Banda
+          <select id="band">
+            <option value="all">Todas</option>
+            <option value="2.4">2.4 GHz</option>
+            <option value="5">5 GHz</option>
+            <option value="6">6 GHz</option>
+          </select>
+        </label>
+        <label>Ambiente
+          <select id="environment">
+            <option value="urban">Urbano (n≈2.7)</option>
+            <option value="indoor">Interno (n≈3.0)</option>
+            <option value="open">Aberto (n≈2.2)</option>
+          </select>
+        </label>
+        <div class="btn-row">
+          <button id="btn-start" class="primary">▶ Iniciar</button>
+          <button id="btn-stop" class="danger" disabled>■ Parar</button>
+        </div>
+        <p id="scan-msg" class="msg"></p>
+      </section>
+
+      <section>
+        <h2>Sintonia &amp; Regulatório</h2>
+        <label>País (reg domain)
+          <input id="country" maxlength="2" placeholder="BR" value="BR">
+        </label>
+        <label>TX power (dBm)
+          <input id="txpower" type="number" placeholder="20" min="1" max="33">
+        </label>
+        <button id="btn-tune">Aplicar / diagnosticar</button>
+        <pre id="tune-out" class="out"></pre>
+      </section>
+
+      <section>
+        <h2>Calibração RSSI → distância</h2>
+        <label>BSSID alvo
+          <select id="cal-bssid"><option value="">— selecione um AP —</option></select>
+        </label>
+        <div class="cal-add">
+          <input id="cal-dist" type="number" step="0.1" placeholder="dist (m)">
+          <input id="cal-rssi" type="number" step="1" placeholder="rssi (auto)">
+          <button id="cal-capture" title="capturar RSSI atual">⎗</button>
+          <button id="cal-add">+ amostra</button>
+        </div>
+        <ul id="cal-samples" class="samples"></ul>
+        <button id="cal-fit" class="primary" disabled>Ajustar &amp; salvar</button>
+        <div id="cal-profiles" class="profiles"></div>
+      </section>
+    </aside>
+
+    <section class="radar-wrap">
+      <div class="radar-head">
+        <div class="legend">
+          <span><i class="b24"></i>2.4</span>
+          <span><i class="b5"></i>5</span>
+          <span><i class="b6"></i>6 GHz</span>
+          <span><i class="cal"></i>calibrado</span>
+        </div>
+        <div id="focus-bar" class="focus-bar hidden">
+          🎯 Focus: <b id="focus-name"></b>
+          <button id="focus-clear">limpar</button>
+        </div>
+      </div>
+      <canvas id="radar"></canvas>
+      <div class="counts"><span id="ap-count">0</span> APs</div>
+    </section>
+
+    <section class="list-wrap">
+      <h2>Access Points</h2>
+      <table>
+        <thead>
+          <tr><th>SSID</th><th>BSSID</th><th>Banda</th><th>Ch</th>
+              <th>RSSI</th><th>Dist.</th><th></th></tr>
+        </thead>
+        <tbody id="ap-tbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

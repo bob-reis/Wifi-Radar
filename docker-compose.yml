@@ -1,0 +1,25 @@
+# Hackers-Arise Wi-Fi Radar — web edition
+#
+# Scan REAL (airodump-ng em monitor mode) exige acesso ao adaptador WiFi do
+# host. Como o driver vive no kernel do host, o container roda com:
+#   - network_mode: host  -> enxerga as interfaces do host e serve na :8000
+#   - privileged + caps    -> manipula a interface (monitor mode, txpower, reg)
+#
+# Modo SIMULAÇÃO não precisa de nada disso, mas mantemos a config única.
+services:
+  radar:
+    build: .
+    image: hackersarise/wifi-radar:latest
+    container_name: wifi-radar
+    network_mode: host
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./data:/app/data          # perfis de calibração + logs persistentes
+      - /var/run/dbus:/var/run/dbus:ro
+    environment:
+      - RADAR_DATA=/app/data
+    restart: unless-stopped
+    # UI em http://localhost:8000  (network_mode host -> sem mapeamento de portas)
